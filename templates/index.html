@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yvens GOAT — AI Video Analyst</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #080b12;
+      color: white;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: min(92%, 850px);
+      margin: auto;
+      padding: 40px 0 80px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 8px 14px;
+      border-radius: 20px;
+      background: #161b28;
+      font-size: 13px;
+      color: #b8c0d9;
+      margin-bottom: 15px;
+    }
+
+    h1 {
+      font-size: 42px;
+      margin: 0;
+    }
+
+    .goat {
+      color: #8b5cf6;
+    }
+
+    .subtitle {
+      color: #aab1c5;
+      line-height: 1.6;
+      margin: 12px 0 30px;
+    }
+
+    .card {
+      background: #111622;
+      border: 1px solid #252c3d;
+      border-radius: 20px;
+      padding: 22px;
+      margin-top: 20px;
+    }
+
+    .upload {
+      border: 2px dashed #343d55;
+      border-radius: 16px;
+      padding: 30px 18px;
+      text-align: center;
+    }
+
+    input[type=file] {
+      width: 100%;
+      margin-top: 15px;
+    }
+
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 14px;
+      padding: 16px;
+      margin-top: 18px;
+      font-size: 17px;
+      font-weight: 700;
+      background: #7c3aed;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    #status {
+      margin-top: 20px;
+      color: #c7cce0;
+      line-height: 1.5;
+      display: none;
+    }
+
+    .progress {
+      height: 8px;
+      background: #252b39;
+      border-radius: 20px;
+      overflow: hidden;
+      margin-top: 12px;
+      display: none;
+    }
+
+    .bar {
+      height: 100%;
+      width: 25%;
+      background: #8b5cf6;
+      border-radius: 20px;
+      animation: loading 1.3s infinite alternate;
+    }
+
+    @keyframes loading {
+      from { width: 15%; }
+      to { width: 95%; }
+    }
+
+    #resultCard {
+      display: none;
+    }
+
+    #result {
+      white-space: pre-wrap;
+      line-height: 1.7;
+      font-size: 15px;
+      color: #e4e7f0;
+    }
+
+    .error {
+      color: #ff6b6b !important;
+    }
+
+    .meta {
+      color: #8f98af;
+      font-size: 13px;
+      margin-top: 10px;
+    }
+
+    .copy {
+      background: #202738;
+      margin-top: 20px;
+    }
+
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 34px;
+      }
+
+      .container {
+        padding-top: 25px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="badge">GOAT AI · FULL VIDEO ANALYSIS</div>
+
+  <h1>Yvens <span class="goat">GOAT</span></h1>
+
+  <p class="subtitle">
+    Analyse les actions, transcrit les dialogues, traduit les paroles
+    en français et crée un script complet prêt pour la voix-off.
+  </p>
+
+  <div class="card">
+
+    <div class="upload">
+      <h2>Choisir une vidéo</h2>
+
+      <p>
+        Taille maximale :
+        <strong>{{ max_mb }} MB</strong>
+        · Durée maximale : <strong>15 minutes</strong>
+      </p>
+
+      <input
+        id="video"
+        type="file"
+        accept="video/*"
+      >
+    </div>
+
+    <button id="analyze">
+      🐐 Analyser la vidéo
+    </button>
+
+    <div id="status">
+      <strong id="statusText">
+        Préparation de l'analyse…
+      </strong>
+
+      <div class="progress" id="progress">
+        <div class="bar"></div>
+      </div>
+
+      <p class="meta">
+        Le serveur analyse l'audio et les images de toute la vidéo.
+        Ne ferme pas cette page pendant le traitement.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="card" id="resultCard">
+
+    <h2>Résultat GOAT</h2>
+
+    <div id="result"></div>
+
+    <button class="copy" id="copy">
+      Copier le script
+    </button>
+
+  </div>
+
+</div>
+
+<script>
+const videoInput = document.getElementById("video");
+const analyzeBtn = document.getElementById("analyze");
+const statusBox = document.getElementById("status");
+const statusText = document.getElementById("statusText");
+const progress = document.getElementById("progress");
+const resultCard = document.getElementById("resultCard");
+const resultBox = document.getElementById("result");
+const copyBtn = document.getElementById("copy");
+
+analyzeBtn.addEventListener("click", async () => {
+
+  const file = videoInput.files[0];
+
+  if (!file) {
+    alert("Chwazi yon videyo anvan.");
+    return;
+  }
+
+  analyzeBtn.disabled = true;
+  resultCard.style.display = "none";
+
+  statusBox.style.display = "block";
+  progress.style.display = "block";
+
+  statusText.className = "";
+  statusText.textContent =
+    "Upload videyo a ap fèt. Apre sa GOAT ap analize audio, dyalòg ak aksyon yo…";
+
+  const form = new FormData();
+  form.append("video", file);
+
+  try {
+
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      body: form
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || "Analiz la echwe.");
+    }
+
+    progress.style.display = "none";
+
+    statusText.textContent = "✅ Analyse terminée";
+
+    resultBox.className = "";
+    resultBox.textContent = data.result;
+
+    resultCard.style.display = "block";
+
+    resultCard.scrollIntoView({
+      behavior: "smooth"
+    });
+
+  } catch (error) {
+
+    progress.style.display = "none";
+
+    statusText.className = "error";
+    statusText.textContent =
+      "❌ " + error.message;
+
+  } finally {
+
+    analyzeBtn.disabled = false;
+
+  }
+
+});
+
+copyBtn.addEventListener("click", async () => {
+
+  try {
+
+    await navigator.clipboard.writeText(
+      resultBox.textContent
+    );
+
+    copyBtn.textContent = "✅ Copié";
+
+    setTimeout(() => {
+      copyBtn.textContent = "Copier le script";
+    }, 1800);
+
+  } catch {
+
+    alert("Pa rive kopye otomatikman.");
+
+  }
+
+});
+</script>
+
+</body>
+</html>
